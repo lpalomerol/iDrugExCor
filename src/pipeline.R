@@ -45,8 +45,6 @@ SAMPLES_BY_SUBSET = 'mm5_samples_by_cancer_type.csv'
 CANCER.TYPE = 'Cancer.Type'
 TISSUE.DESCRIPTION = 'Tissue.description'
 
-
-
 GENES_TO_CHECK_SUBSETS = opt$genes
 CANCER_TYPES_TO_CHECK_SUBSETS = opt$cancer_types
 
@@ -78,7 +76,7 @@ getSamplesBySubset <- function(samplesData, subsetRules, type = CANCER.TYPE){
     
     
   }, subsetRules = subsetRules,
-     samplesData = samplesData)
+  samplesData = samplesData)
   names(samples) = subsets
   return(samples)
 }
@@ -197,9 +195,9 @@ makeCorTest<- function(geneValues, treatmentValues, geneName, treatmentName){
   }, error   = function(e){
     err <<- e
   }, warning = function(e){
-   err <<- e       
+    err <<- e
   } )
-
+  
   return(
     data.frame(
       gene             = geneName,
@@ -216,13 +214,14 @@ makeCorTest<- function(geneValues, treatmentValues, geneName, treatmentName){
   )
 }
 
-loopNormalSequentialDetailed <- function(treatmentsSort, expressionDataMatSort){
-
+loopNormalSequentialDetailed <- function(treatmentsSort, expressionDataMatSort, talk){
+  
   
   correlationsPMatrix = sapply((1:ncol(treatmentsSort)), function(treatmentI, 
-                                                                       treatmentsSort, 
-                                                                       expressionDataMatSort,
-                                                                       makeCorTest){
+                                                                  treatmentsSort, 
+                                                                  expressionDataMatSort,
+                                                                  makeCorTest){
+    talk(paste('Check for [', treatmentI, ']', sep=''))
     treatment = treatmentsSort[treatmentI]
     
     treatmentData = sapply(1:ncol(expressionDataMatSort), function(expressionI, 
@@ -233,14 +232,14 @@ loopNormalSequentialDetailed <- function(treatmentsSort, expressionDataMatSort){
                   colnames(expressionDataMatSort[expressionI]),
                   colnames(treatment[1]))
     }, expressionDataMatSort = expressionDataMatSort,
-       treatment = treatment)
+    treatment = treatment)
     
     
   }, treatmentsSort = treatmentsSort,
   expressionDataMatSort = expressionDataMatSort,
   makeCorTest = makeCorTest
   )
-    
+  
   # TODO: Read from output
   columns = c('GeneTitle', 'TreatmentId', 'Treatment', 'Correlation', 
               'P.value', 'n.gene', 'n.treatment', 'error')
@@ -268,7 +267,7 @@ checkCorrelations <- function(corrToCheck,
   geneToCheck = as.character(corrToCheck['GeneTitle'])
   treatmentToCheck = as.character(corrToCheck['Treatment'])
   # treatmentToCheck = getTreatmentName(treatmentToCheck)  
-  
+
   geneData = expressionDataMat[geneToCheck]
   
   treatmentData = treatment[treatmentToCheck]
@@ -297,7 +296,6 @@ addCompounds <- function(correlations, compounds){
   return(merge(correlations, compounds, by.x = 'TreatmentId', by.y='Identifier'))
 }
 
-
 talk('Load gene subset rules')
 genesToCheckSubsets = read.csv(GENES_TO_CHECK_SUBSETS,
                                header = TRUE, 
@@ -316,7 +314,7 @@ samplesData = read.csv(paste(INPUT_DATA_FOLDER, SAMPLES_BY_SUBSET, sep='/' ),
 samplesBySubset = getSamplesBySubset(samplesData, cancerTypesSubsets, CANCER.TYPE)
 
 compounds = read.csv(paste(INPUT_DATA_FOLDER, COMPOUNDS_FILENAME, sep='/'), sep=';')
-                     
+
 
 
 talk('Load expression data')
@@ -335,7 +333,8 @@ expressionDataMatSort = expressionDataMatSig[order(rownames(expressionDataMatSig
 
 #Filtering selected genes in order to reduce memory consumption
 allGenesToAnalyze = colnames(expressionDataMatSort) %in% unique(genesToCheckSubsets$Gene)
-expressionDataMatSort = expressionDataMatSort[, allGenesToAnalyze ]
+
+expressionDataMatSort = expressionDataMatSort[ allGenesToAnalyze ]
 
 groupsAndTreatments = expand.grid(group = unique(names(genesBySubset)), treamentId = TREATMENT_FILES)
 groupsAndTreatments = groupsAndTreatments[is.na(groupsAndTreatments$group) == FALSE,]
@@ -346,33 +345,37 @@ apply(groupsAndTreatments, 1, function(groupAndTreatment,
                                        genesBySubset,
                                        expressionDataMatSort, 
                                        compounds){
-  
+  talk(groupAndTreatment)
   groupToRetrieve = groupAndTreatment[['group']]
   treatmentId = groupAndTreatment[['treamentId']]
-   
+  
   treatments = loadTreatment(paste(INPUT_DATA_FOLDER, treatmentId, sep='/'))
-  treatmentsSort = treatments[
-    rownames(treatments) %in% samplesBySubset[[groupToRetrieve]],
-    ]  
+  treatmentsSort = treatments[rownames(treatments) %in% samplesBySubset[[groupToRetrieve]],]  
   treatmentsSort = treatmentsSort[order(rownames(treatmentsSort)),]
- 
-  treatmentsSort = treatmentsSort[rownames(treatmentsSort) %in% rownames(expressionDataMatSort),]
-
+  
+  treatmentsSort = treatmentsSort[rownames(treatmentsSort) %in% rownames(expressionDataMatSort),,
+                                  drop=FALSE]
+  
+  talk(paste('Lets filter genes', genesBySubset[[groupToRetrieve]], sep =':', collapse=','))
+  
   expressionDataMatSort = expressionDataMatSort[
-    ,colnames(expressionDataMatSort) %in% genesBySubset[[groupToRetrieve]]
+    ,  colnames(expressionDataMatSort) %in% genesBySubset[[groupToRetrieve]], drop= FALSE
   ]
 
-  expressionDataMatSort = expressionDataMatSort[rownames(expressionDataMatSort) %in% rownames(treatmentsSort),]
-  correlationMatrix = loopNormalSequentialDetailed(treatmentsSort, expressionDataMatSort)
+  expressionDataMatSort = expressionDataMatSort[
+    c(rownames(expressionDataMatSort) %in% rownames(treatmentsSort)),, drop=FALSE
+  ]
+
+  correlationMatrix = loopNormalSequentialDetailed(treatmentsSort, expressionDataMatSort, talk)
   
   correlationMatrix <- addCompounds(correlationMatrix, compounds)
-
+  
   outputDir = paste(opt$out,'/',groupToRetrieve, sep = '')
   if(dir.exists(outputDir)==FALSE){
     dir.create(outputDir)
   }
-
-  print(paste('save', paste(outputDir, '/corr_', treatmentId, sep='')))
+  
+  talk(paste('save', paste(outputDir, '/corr_', treatmentId, sep='')))
   write.table(correlationMatrix, 
               paste(outputDir, '/corr_', treatmentId, sep=''),
               quote = TRUE,
@@ -384,16 +387,22 @@ apply(groupsAndTreatments, 1, function(groupAndTreatment,
   highestCorrelations = head(correlationsSorted)
   lowestCorrelations  = tail(correlationsSorted)  
   
-  imagesStoresd = apply(highestCorrelations, 1, checkCorrelations,
-        expressionDataMat = expressionDataMatSort,
-        treatment         = treatments,
-        group             = as.character(treatmentId),
-        outputDir         = outputDir)
+  imagesStores = apply(highestCorrelations, 1, checkCorrelations,
+                       expressionDataMat = expressionDataMatSort,
+                       treatment         = treatments,
+                       group             = as.character(treatmentId),
+                       outputDir         = outputDir)
+  
+  imagesStores = apply(lowestCorrelations, 1, checkCorrelations,
+                       expressionDataMat = expressionDataMatSort,
+                       treatment         = treatments,
+                       group             = as.character(treatmentId),
+                       outputDir         = outputDir)  
   
 }, samplesBySubset       = samplesBySubset,
-   genesBySubset         = genesBySubset,
-   expressionDataMatSort = expressionDataMatSort,
-   compounds             = compounds)
+genesBySubset         = genesBySubset,
+expressionDataMatSort = expressionDataMatSort,
+compounds             = compounds)
 
 print("Done")
 proc.time() - time1
