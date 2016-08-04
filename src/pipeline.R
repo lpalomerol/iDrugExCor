@@ -33,7 +33,7 @@ if (is.null(opt$genes)){
 
 INPUT_DATA_FOLDER   = 'data'
 EXPRESSION_FILENAME = 'Cell_line_RMA_proc_basalExp.txt'
-EXPRESSIONDATA_FILENAME = '../data/expressionData.Rdata'
+EXPRESSIONDATA_FILENAME = 'expressionData.Rdata'
 AUC                 = 'mm5_auc.csv'
 IC50                = 'mm5_ic50.csv'
 COMPOUNDS_FILENAME  = 'mmc2-compounds.csv'
@@ -323,11 +323,15 @@ talk('Load expression data')
 # expressionData = read.csv(paste(INPUT_DATA_FOLDER, EXPRESSION_FILENAME, sep='/'),
 #                          sep='\t')
 # expressionData = cleanExpressionData(expressionData)
-# save(expressionData, file='../data/expressionData.Rdata')
+# expressionDataMat = asExpressionMatrix(expressionData)
+# expressionDataSignif = signif(expressionData)
+# save(expressionDataMatSig, file='data/expressionData.Rdata', compress = 'xz', compression_level = 9)
+
+
 load(paste(INPUT_DATA_FOLDER, EXPRESSIONDATA_FILENAME, sep='/'))
 
-expressionDataMat = asExpressionMatrix(expressionData)
-expressionDataMatSort = expressionDataMat[order(rownames(expressionDataMat)),]
+
+expressionDataMatSort = expressionDataMatSig[order(rownames(expressionDataMatSig)),]
 
 #Filtering selected genes in order to reduce memory consumption
 allGenesToAnalyze = colnames(expressionDataMatSort) %in% unique(genesToCheckSubsets$Gene)
