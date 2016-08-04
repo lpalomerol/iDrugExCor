@@ -1,0 +1,5 @@
+SubsetName;Gene
+ma.pujana.all;EPCAM
+ma.pujana.all;ITGA6
+ma.pujana.brca;EPCAM
+ma.pujana.brca;ITGA6

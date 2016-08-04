@@ -1,0 +1,3 @@
+SubsetName;Cancer.Type
+ma.pujana.all;ALL
+ma.pujana.brca;BRCA

@@ -1,0 +1,7 @@
+
+#Is sad... i have to ignore expression data matrix
+data/*.Rdata
+data/Cell_line_RMA_proc_basalExp.txt
+src/.RData
+src/.Rhistory
+out
