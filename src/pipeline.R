@@ -38,12 +38,16 @@ AUC                 = 'mm5_auc.csv'
 IC50                = 'mm5_ic50.csv'
 COMPOUNDS_FILENAME  = 'mmc2-compounds.csv'
 TREATMENT_FILES     = c(AUC, IC50)
+TYPE_COLUMN_ID      = 2
 
 
 SAMPLES_BY_SUBSET = 'mm5_samples_by_cancer_type.csv'
 
 CANCER.TYPE = 'Cancer.Type'
 TISSUE.DESCRIPTION = 'Tissue.description'
+CELL.LINE = 'Cell.Line'
+
+RETRIEVE.ALL.GROUPS='All'
 
 GENES_TO_CHECK_SUBSETS = opt$genes
 CANCER_TYPES_TO_CHECK_SUBSETS = opt$cancer_types
@@ -55,20 +59,23 @@ talk <- function(message){
 }
 
 
-getSamplesBySubset <- function(samplesData, subsetRules, type = CANCER.TYPE){
+getSamplesBySubset <- function(samplesData, subsetRules){
 
   subsets = unique(subsetRules$SubsetName)
-  validRuleColumns =  c(CANCER.TYPE, TISSUE.DESCRIPTION)
+  validRuleColumns =  c(CANCER.TYPE, TISSUE.DESCRIPTION, CELL.LINE)
+  type = colnames(subsetRules)[TYPE_COLUMN_ID]
   if(!type %in% validRuleColumns){
     stop('Invalid rule column')
   }
   samples = sapply(subsets, function(group, subsetRules, samplesData){
     groupToRetrieve = as.vector(
-      subsetRules[subsetRules$SubsetName == group,][type][[1]]
+      subsetRules[subsetRules$SubsetName == group,][TYPE_COLUMN_ID][[1]]
     )
 
-    if(groupToRetrieve == 'ALL') {
+    if(RETRIEVE.ALL.GROUPS %in% groupToRetrieve) {
       identifiers = samplesData$Identifier
+    } else if (type == CELL.LINE){
+      identifiers = groupToRetrieve
     } else {
       identifiers = samplesData[samplesData[,type]  %in% groupToRetrieve, ]$Identifier
     }
@@ -76,7 +83,7 @@ getSamplesBySubset <- function(samplesData, subsetRules, type = CANCER.TYPE){
 
 
   }, subsetRules = subsetRules,
-  samplesData = samplesData)
+     samplesData = samplesData)
   names(samples) = subsets
   return(samples)
 }
@@ -311,7 +318,7 @@ cancerTypesSubsets =  read.csv(CANCER_TYPES_TO_CHECK_SUBSETS,
 
 samplesData = read.csv(paste(INPUT_DATA_FOLDER, SAMPLES_BY_SUBSET, sep='/' ),
                        sep=';')
-samplesBySubset = getSamplesBySubset(samplesData, cancerTypesSubsets, CANCER.TYPE)
+samplesBySubset = getSamplesBySubset(samplesData, cancerTypesSubsets)
 
 compounds = read.csv(paste(INPUT_DATA_FOLDER, COMPOUNDS_FILENAME, sep='/'), sep=';')
 
@@ -356,7 +363,7 @@ apply(groupsAndTreatments, 1, function(groupAndTreatment,
   treatmentsSort = treatmentsSort[rownames(treatmentsSort) %in% rownames(expressionDataMatSort),,
                                   drop=FALSE]
 
-  talk(paste('Lets filter genes', genesBySubset[[groupToRetrieve]], sep =':', collapse=','))
+  talk(paste('lets filter genes', paste(genesBySubset[[groupToRetrieve]], collapse=','), sep=':'))
 
   expressionDataMatSort = expressionDataMatSort[
     ,  colnames(expressionDataMatSort) %in% genesBySubset[[groupToRetrieve]], drop= FALSE

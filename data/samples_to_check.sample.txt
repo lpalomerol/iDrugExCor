@@ -1,0 +1,16 @@
+SubsetName;Cell.Line
+ma.pujana.alla;905951
+ma.pujana.all;910852
+ma.pujana.all;749710
+ma.pujana.all;749711
+ma.pujana.all;749712
+ma.pujana.all;749713
+ma.pujana.all;749715
+ma.pujana.all;907048
+ma.pujana.all;908123
+ma.pujana.brca;924106
+ma.pujana.brca;908122
+ma.pujana.brca;906826
+ma.pujana.brca;906844
+ma.pujana.brca;925338
+ma.pujana.brca;910948
